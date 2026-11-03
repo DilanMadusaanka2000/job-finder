@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Software Engineer Job Aggregator</title>
+  <style>
+    :root { color-scheme: light; --green:#16845d; --ink:#17212b; --muted:#64748b; --line:#e2e8f0; }
+    * { box-sizing:border-box } body { margin:0; font-family:Inter,system-ui,Segoe UI,sans-serif; background:#f5f7fa; color:var(--ink) }
+    header { background:#102b24; color:white; padding:28px max(20px,calc((100% - 1100px)/2)); }
+    header h1 { margin:0 0 8px; font-size:clamp(1.4rem,3vw,2.1rem) } header p { margin:0; color:#c8ded6 }
+    main { max-width:1100px; margin:24px auto; padding:0 16px }
+    .panel { background:white; border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:18px }
+    form.filters { display:grid; grid-template-columns:2fr 1.2fr 1fr auto; gap:10px }
+    input,select,button { font:inherit; padding:11px 12px; border-radius:8px; border:1px solid #cbd5e1; min-width:0 }
+    button { background:var(--green); color:white; border:0; font-weight:650; cursor:pointer }
+    .sync { display:flex; gap:14px; flex-wrap:wrap; align-items:center }
+    .sync label { color:#334155; font-size:.9rem } .sync button { margin-left:auto }
+    .meta { color:var(--muted); font-size:.92rem; margin:14px 0 }
+    .job { padding:17px 0; border-top:1px solid var(--line) } .job:first-child { border-top:0 }
+    .job h2 { font-size:1.1rem; margin:0 0 6px } .job h2 a { color:#0b6045; text-decoration:none }
+    .job h2 a:hover { text-decoration:underline } .company { font-weight:650 }
+    .details { color:var(--muted); font-size:.9rem; display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:7px }
+    .desc { color:#475569; line-height:1.45; margin:10px 0 0; font-size:.94rem }
+    .pill { background:#e8f5ef; color:#126247; padding:3px 8px; border-radius:99px; font-size:.78rem }
+    .pagination { display:flex; justify-content:space-between; align-items:center; margin-top:18px }
+    .pagination a { color:var(--green); font-weight:650 } .empty { color:var(--muted); padding:30px 0 }
+    footer { color:var(--muted); font-size:.82rem; line-height:1.5; padding:10px 0 30px }
+    @media(max-width:700px) { form.filters { grid-template-columns:1fr } .sync button { margin-left:0; width:100% } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Software Engineer Job Aggregator</h1>
+  <p>Search software jobs from multiple sources in one dashboard.</p>
+</header>
+<main>
+  <section class="panel">
+    <form class="filters" method="get" action="/">
+      <input name="q" value="{{ q }}" placeholder="Title, skill, or company">
+      <input name="location" value="{{ location }}" placeholder="Location (e.g. Sri Lanka, Remote)">
+      <select name="source">
+        <option value="">All sources</option>
+        {% for item in ["Remotive", "Arbeitnow", "Adzuna", "TopJobs"] %}
+          <option value="{{ item }}" {% if source == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Search jobs</button>
+    </form>
+  </section>
+  <section class="panel">
+    <form class="sync" method="post" action="/sync">
+      <strong>Collect latest listings</strong>
+      <label><input type="checkbox" name="sources" value="remotive" checked> Remotive</label>
+      <label><input type="checkbox" name="sources" value="arbeitnow" checked> Arbeitnow</label>
+      <label><input type="checkbox" name="sources" value="adzuna" checked> Adzuna (needs API key)</label>
+      <label><input type="checkbox" name="sources" value="topjobs" checked> TopJobs</label>
+      <button type="submit">Sync sources</button>
+    </form>
+  </section>
+  <p class="meta">Showing {{ jobs|length }} of {{ total }} saved jobs · Page {{ page }} of {{ pages }}</p>
+  <section class="panel">
+    {% if jobs %}
+      {% for job in jobs %}
+        <article class="job">
+          <h2><a href="{{ job.apply_url }}" target="_blank" rel="noopener noreferrer">{{ job.title }}</a></h2>
+          <div class="company">{{ job.company }}</div>
+          <div class="details">
+            <span>{{ job.location }}</span><span>{{ job.job_type }}</span>
+            <span class="pill">{{ job.source }}</span>
+            {% if job.published_at %}<span>Published {{ job.published_at.strftime("%Y-%m-%d") }}</span>{% endif %}
+          </div>
+          {% if job.description %}<p class="desc">{{ job.description[:360] }}{% if job.description|length > 360 %}…{% endif %}</p>{% endif %}
+          {% if job.source == "Remotive" %}<small>Source: <a href="https://remotive.com" target="_blank" rel="noopener">Remotive</a> · <a href="{{ job.apply_url }}" target="_blank" rel="noopener">Original listing</a></small>{% endif %}
+          {% if job.source == "Arbeitnow" %}<small>Source: <a href="https://www.arbeitnow.com" target="_blank" rel="noopener">Arbeitnow</a> · <a href="{{ job.apply_url }}" target="_blank" rel="noopener">Original listing</a></small>{% endif %}
+          {% if job.source == "Adzuna" %}<small><a href="{{ job.apply_url }}" target="_blank" rel="noopener">Original listing</a> · Jobs by <a href="https://www.adzuna.com" target="_blank" rel="noopener">Adzuna</a></small>{% endif %}
+        </article>
+      {% endfor %}
+      <nav class="pagination">
+        {% if page > 1 %}<a href="/?q={{ q|urlencode }}&location={{ location|urlencode }}&source={{ source|urlencode }}&page={{ page - 1 }}">← Previous</a>{% else %}<span></span>{% endif %}
+        {% if page < pages %}<a href="/?q={{ q|urlencode }}&location={{ location|urlencode }}&source={{ source|urlencode }}&page={{ page + 1 }}">Next →</a>{% endif %}
+      </nav>
+    {% else %}
+      <div class="empty">No saved jobs match your filters. Click “Sync sources” to collect listings, or change your search.</div>
+    {% endif %}
+  </section>
+  <footer>
+    Listings are provided by third-party sources and may be delayed, expired, location-restricted, or changed by the employer.
+    Always open the original listing to confirm details. This dashboard is a personal learning project and does not guarantee complete job coverage.
+  </footer>
+</main>
+</body>
+</html>

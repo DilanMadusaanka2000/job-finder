@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: software-job-aggregator-db
+    environment:
+      POSTGRES_DB: jobs
+      POSTGRES_USER: jobs
+      POSTGRES_PASSWORD: jobs
+    ports:
+      - "5434:5432"
+    volumes:
+      - jobs_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobs -d jobs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  jobs_postgres_data:
